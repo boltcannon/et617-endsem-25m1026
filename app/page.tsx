@@ -6,6 +6,18 @@ import {
 
 const ROLL = "25M1026";
 const KEY = "et617_25m1026_session_v1";
+const SHOP_KEY = "et617_25m1026_shop_v1";
+
+// Effort and strategy badges only. Nothing here counts mistakes or scores correctness.
+function earnedBadges(h: Attempt[]): { name: string; why: string }[] {
+  const out: { name: string; why: string }[] = [];
+  if (h.some((a) => a.hintUsed)) out.push({ name: "💡 Smart hint-user", why: "You used help when you needed it." });
+  if (h.some((a) => a.unsure)) out.push({ name: "🤔 Honest thinker", why: "You said when you felt unsure." });
+  if (h.some((a, i) => i > 0 && a.correct && !h[i - 1].correct)) out.push({ name: "🔁 Bounced back", why: "You kept going after a miss." });
+  if (h.some((a, i) => i > 0 && a.correct && (h[i - 1].tag === "M1" || h[i - 1].tag === "M2"))) out.push({ name: "🎯 Base finder", why: "You picked the right base after a mix-up." });
+  out.push({ name: "🏁 Finisher", why: "You finished all five steps." });
+  return out;
+}
 const SESSION_MIN = 10;
 const PRACTICE_COUNT = 4;
 
@@ -54,6 +66,7 @@ export default function Page() {
   const [hint, setHint] = useState(false);
   const [text, setText] = useState("");
   const [about, setAbout] = useState(false);
+  const [shopCount, setShopCount] = useState(0);
   const sRef = useRef<Saved | null>(null);
   sRef.current = s;
 
@@ -66,6 +79,10 @@ export default function Page() {
         if (p && p.screen !== "summary" && (p.screen !== "home" || p.from)) setHasSaved(p);
       }
     } catch { /* ignore */ }
+    try {
+      const shop = JSON.parse(localStorage.getItem(SHOP_KEY) || "[]");
+      if (Array.isArray(shop)) setShopCount(shop.length);
+    } catch { /* ignore */ }
     setReady(true);
   }, []);
 
@@ -74,6 +91,19 @@ export default function Page() {
     if (!s) return;
     try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* ignore */ }
   }, [s]);
+
+  // save earned badge names when the summary is shown
+  useEffect(() => {
+    if (!s || s.screen !== "summary") return;
+    try {
+      const earned = earnedBadges(s.tutor.history).map((b) => b.name);
+      const prev = JSON.parse(localStorage.getItem(SHOP_KEY) || "[]");
+      const all = Array.from(new Set([...(Array.isArray(prev) ? prev : []), ...earned]));
+      localStorage.setItem(SHOP_KEY, JSON.stringify(all));
+      setShopCount(all.length);
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s?.screen]);
 
   // gentle elapsed timer (only while learning)
   useEffect(() => {
@@ -223,6 +253,7 @@ export default function Page() {
         <h1>Percent, step by step</h1>
         <p>Hi! This is a short, calm practice on <b>discount, profit and loss</b>. About 10 minutes. No marks, no red crosses. Mistakes just help me show you a better way.</p>
         <div className="box"><b>5 small steps:</b> warm-up · idea · practice · explain · wrap-up</div>
+        {shopCount > 0 && <p className="muted">Your shop so far: {shopCount} badge{shopCount === 1 ? "" : "s"}</p>}
         {saved ? (
           <div className="card">
             <b>You left off at step {saved.step} of 5.</b>
@@ -424,6 +455,7 @@ export default function Page() {
     const att = s.tutor.history;
     const ok = att.filter((a) => a.correct).length;
     const lvlName = ["Basics", "Discounts", "Profit & loss", "Two-step problems"][s.tutor.level];
+    const badges = earnedBadges(att);
     const ideas: string[] = [];
     if (s.tutor.hits.M1) ideas.push("Profit/loss % is out of the cost price. We worked on this.");
     if (s.tutor.hits.M2) ideas.push("The second discount is out of the new, lower price. We worked on this.");
@@ -435,6 +467,16 @@ export default function Page() {
           <p>Where you reached: <b>{lvlName}</b></p>
           {ideas.length ? <div className="box warn"><b>Ideas we worked on today</b><ul className="log">{ideas.map((i) => <li key={i}>{i}</li>)}</ul></div> : <div className="box">No mix-ups showed up today. Nice careful thinking.</div>}
           <b>Next time:</b> {s.tutor.hits.M1 ? "a few profit and loss questions, always asking “out of which price?”" : s.tutor.hits.M2 ? "a few two-discount questions, asking “price just before it?”" : "a harder two-step problem."}
+        </div>
+        <div className="card shop">
+          <b>My shop shelf</b>
+          <div className="shelf" role="img" aria-label="Five shelf items: a bag, a pencil, a notebook, a price tag and a receipt">
+            {["🛍️", "✏️", "📒", "🏷️", "🧾"].map((e) => <span key={e} className="slot">{e}</span>)}
+          </div>
+          <p className="muted" style={{ margin: "8px 0" }}>Your shelf is stocked: one item for each step you finished.</p>
+          <div className="pills">
+            {badges.map((b) => <div className="pill" key={b.name}><b>{b.name}</b><span>{b.why}</span></div>)}
+          </div>
         </div>
         <details className="card"><summary><b>How the tutor chose your path</b></summary>
           <ul className="log">{s.log.map((l, i) => <li key={i}>{l}</li>)}</ul>
@@ -477,6 +519,7 @@ function About() {
         <p><b>For:</b> Kavya, 13, Class 8, retaking the percentages unit.</p>
         <p><b>How it adapts:</b> a 2-question warm-up sets the start level; then your answers, mix-up patterns, hints and “not sure” taps decide whether you get a harder question, another explanation, or a basics rebuild.</p>
         <p><b>What AI does:</b> rewords the story of a question and warms up feedback. <b>What AI never does:</b> compute answers, grade, or decide what comes next. A fixed rule engine does that.</p>
+        <p>Rewards are for effort and strategy, never for scores, so nothing can be lost.</p>
         <p className="muted">ET 617 End-Semester Examination, 18 Nov 2026.</p>
       </div>
     </>

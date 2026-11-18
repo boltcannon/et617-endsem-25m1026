@@ -39,3 +39,12 @@ footer a,footer button{color:var(--brand-d);background:none;border:0;font:inheri
 .viz .b.l{background:#7aa99a}.viz .b.o{background:var(--amber)}
 ul.log{padding-left:18px;margin:6px 0;font-size:15px}
 .muted{color:var(--muted);font-size:15px}
+
+.shop{padding-bottom:12px}
+.shelf{display:flex;justify-content:space-around;font-size:30px;padding:10px 4px 4px;margin-top:6px;border-bottom:8px solid #b08968;border-radius:0 0 4px 4px;box-shadow:0 3px 0 rgba(141,106,74,.25)}
+.slot{display:inline-block;line-height:1}
+.pills{display:flex;flex-direction:column;gap:6px}
+.pill{display:flex;flex-direction:column;border-radius:12px;padding:6px 12px;background:var(--soft);border-left:5px solid var(--brand);font-size:15px}
+.pill:nth-child(even){background:var(--amber-bg);border-left-color:var(--amber)}
+.pill span{color:var(--muted);font-size:14px}
+@media (prefers-reduced-motion:no-preference){.shop{animation:shopfade .6s ease-out both}@keyframes shopfade{from{opacity:0}to{opacity:1}}}
