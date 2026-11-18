@@ -147,7 +147,9 @@ export default function Page() {
   }
 
   async function goNext(cur: Saved) {
-    if (cur.qn + 1 >= PRACTICE_COUNT) { resetUI(); setS({ ...cur, screen: "explain", step: 4, remedy: null }); return; }
+    const remedial = cur.fb?.action === "alt_explain" || cur.fb?.action === "prereq";
+    // after a remedy on the last slot, give one more question so the fix is checked
+    if (cur.qn + 1 >= PRACTICE_COUNT && !(remedial && cur.qn + 1 === PRACTICE_COUNT)) { resetUI(); setS({ ...cur, screen: "explain", step: 4, remedy: null }); return; }
     const q = nextQuestion(cur.tutor, rng(cur.seed + cur.qn * 7 + 13));
     await showQuestion(cur, q, { qn: cur.qn + 1, step: 3, remedy: null });
   }
@@ -242,7 +244,7 @@ export default function Page() {
     const done = !!fb;
     body = (
       <>
-        <h2>{s.phase === "warm" ? `Warm-up ${s.qn + 1} of 2` : `Practice ${s.qn + 1} of ${PRACTICE_COUNT}`}</h2>
+        <h2>{s.phase === "warm" ? `Warm-up ${s.qn + 1} of 2` : `Practice ${s.qn + 1} of ${Math.max(PRACTICE_COUNT, s.qn + 1)}`}</h2>
         <div className="card">
           <p style={{ marginTop: 0 }}>{q.stem}</p>
           <div className="ask">{q.ask}</div>
