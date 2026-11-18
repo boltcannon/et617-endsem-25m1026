@@ -410,7 +410,7 @@ export default function Page() {
         <div className={`box ${e.label === "correct" ? "" : "warn"}`}>
           <b>{e.label === "correct" ? "Your idea matches ✔" : "Let us check this together"}</b>
           <p style={{ margin: "6px 0 0" }}>{e.canned}</p>
-          <p className="muted" style={{ margin: "6px 0 0" }}>The check above is from the app’s fixed rules. AI only rephrases it warmly.</p>
+          <p className="muted" style={{ margin: "6px 0 0" }}>This check comes from the app’s fixed rules. AI only adds the warm line above it.</p>
         </div>
       </>
     );
