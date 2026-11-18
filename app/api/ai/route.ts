@@ -69,14 +69,14 @@ export async function POST(req: Request) {
   }
 
   if (body.task === "feedback") {
-    const allowed = (body.allowed ?? []).slice(0, 20);
-    const out = await llm(
-      "You are a kind maths tutor for an anxious 13-year-old who failed this topic once. Reply in 2 short sentences. " +
-        "Do NOT change the maths or the verdict. Never say 'wrong'. Praise effort first. Use only numbers from the given text.",
-      `Verdict (already decided by the app): ${body.label}\nStudent wrote: "${(body.learnerText ?? "").slice(0, 300)}"\nApp's feedback: "${body.canned ?? ""}"\nRewrite the app's feedback warmly in 2 sentences, referring to what the student wrote.`
+        const out = await llm(
+      "You are a kind tutor for an anxious 13-year-old who failed this topic once. Write EXACTLY ONE short sentence (max 20 words) that warmly acknowledges the effort or what the student wrote. " +
+        "Do not use any digits or currency symbols. Do not say whether the answer is right or wrong. Do not explain any maths.",
+      `The student wrote: "${(body.learnerText ?? "").slice(0, 300)}"
+Write the one warm sentence.`
     );
     if (!out) return NextResponse.json({ ok: false, reason: "ai_unavailable", detail: lastErr });
-    if (!validateFeedback(out, allowed)) return NextResponse.json({ ok: false, reason: "failed_validation" });
+    if (!validateFeedback(out)) return NextResponse.json({ ok: false, reason: "failed_validation" });
     return NextResponse.json({ ok: true, text: out });
   }
 

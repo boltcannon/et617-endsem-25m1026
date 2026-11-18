@@ -10,9 +10,13 @@ export function validateStory(text: string, facts: number[]): boolean {
   return true;
 }
 
-export function validateFeedback(text: string, allowed: number[]): boolean {
-  if (text.length < 15 || text.length > 320) return false;
-  if (numbersIn(text).some((n) => !allowed.includes(n))) return false;
-  if (/\b(stupid|dumb|wrong|fail|failed|bad at)\b/i.test(text)) return false;
+// Feedback AI may only add ONE warm sentence with no maths and no verdict.
+// All numbers, comparisons and the verdict come from the app's fixed text.
+export function validateFeedback(text: string): boolean {
+  const t = text.trim();
+  if (t.length < 15 || t.length > 160) return false;
+  if (/\d|[$€£%₹]/.test(t)) return false; // no numbers or currency at all
+  if ((t.match(/[.!?]/g) ?? []).length > 1) return false; // single sentence
+  if (/\b(correct|right|wrong|incorrect|great job|well done|perfect|yes|no|stupid|dumb|fail|failed|bad at|more than|less than|higher|lower)\b/i.test(t)) return false;
   return true;
 }

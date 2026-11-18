@@ -188,7 +188,7 @@ export default function Page() {
       const t = setTimeout(() => c.abort(), 7000);
       const res = await fetch("/api/ai", {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: c.signal,
-        body: JSON.stringify({ task: "feedback", label, learnerText: text, canned, allowed: [20, 10, 30, 1000, 800, 80, 720, 700, 100] }),
+        body: JSON.stringify({ task: "feedback", label, learnerText: text, canned }),
       });
       clearTimeout(t);
       const j = await res.json();
