@@ -247,7 +247,7 @@ export default function Page() {
           <p style={{ marginTop: 0 }}>{q.stem}</p>
           <div className="ask">{q.ask}</div>
           <p style={{ margin: "6px 0 0" }}>
-            <span className="badge">{q.src === "ai" ? "✨ story by AI · numbers and answer checked by the app" : "📄 template story (AI off or checked out)"}</span>
+            <span className="badge">{q.noAI ? "📝 fixed worked example (not AI)" : q.src === "ai" ? "✨ story by AI · numbers and answer checked by the app" : "📄 template story (AI off or failed the check)"}</span>
           </p>
         </div>
 
