@@ -77,7 +77,7 @@ function genPctOf(r: () => number): Question {
       id: nid(), kind: "pct_of", format: "numeric", level: 0, unit: "₹", answer: a,
       stem: `A shopkeeper has a pencil box that costs ₹${y}.`,
       ask: `What is ${x}% of ₹${y}?`,
-      facts: [y, x],
+      facts: [y],
       hint: `Start small: 10% of ${y} is ${y / 10}, and 1% is ${y / 100}. Now build up to ${x}%.`,
       helperBase: y,
       model: `${x}% of ₹${y} = ${x}/100 × ${y} = ₹${a}.`,
