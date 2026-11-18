@@ -104,3 +104,45 @@ test("classifyExplanation", () => {
   assert.equal(classifyExplanation("Yes, 20 and 10 add up to 30"), "M2");
   assert.equal(classifyExplanation("hmm"), "unclear");
 });
+
+test("guided help: three wrong answers in a row (untagged) -> guided, level drops, count resets", () => {
+  let d = decide(newState(2), att({ correct: false, tag: null }));
+  assert.equal(d.action, "continue");
+  d = decide(d.state, att({ correct: false, tag: null }));
+  assert.equal(d.action, "prereq"); // existing rule still fires on the 2nd untagged wrong
+  assert.equal(d.state.level, 1);
+  d = decide(d.state, att({ correct: false, tag: null }));
+  assert.equal(d.action, "guided");
+  assert.equal(d.state.level, 0);
+  assert.equal(d.state.wrongRun, 0);
+});
+
+test("guided help: a correct answer in between resets the count", () => {
+  let d = decide(newState(2), att({ correct: false, tag: null }));
+  d = decide(d.state, att({ correct: true }));
+  d = decide(d.state, att({ correct: false, tag: null }));
+  d = decide(d.state, att({ correct: false, tag: null }));
+  assert.notEqual(d.action, "guided");
+});
+
+test("guided help: three tagged M1 mistakes -> guided and the misconception stays targeted", () => {
+  let d = decide(newState(2), att({ correct: false, tag: "M1" }));
+  assert.equal(d.action, "alt_explain");
+  d = decide(d.state, att({ correct: false, tag: "M1" }));
+  d = decide(d.state, att({ correct: false, tag: "M1" }));
+  assert.equal(d.action, "guided");
+  assert.equal(d.state.target, "M1");
+  assert.equal(d.state.level, 1);
+});
+
+test("every question type has a step-by-step walkthrough ending in the answer", () => {
+  for (const key of ["pct_of", "discount_sp", "profit_mcq", "loss_num", "succ_mcq", "succ_num", "spot_M1", "spot_M2"]) {
+    for (let sd = 1; sd <= 30; sd++) {
+      const q = nextQuestion(newState(2), rng(sd), key);
+      assert.ok(q.walk && q.walk.length >= 4, `${key} has a walkthrough`);
+      assert.ok(q.walk.every((w) => w.length > 8), `${key} steps are non-empty`);
+    }
+  }
+  const q = nextQuestion(newState(2), rng(5), "loss_num");
+  assert.ok(q.walk![3].includes(`${q.answer}%`));
+});

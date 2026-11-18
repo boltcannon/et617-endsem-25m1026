@@ -27,6 +27,7 @@ export interface Question {
   model: string; // model answer
   trap?: Target; // which misconception this item is built to expose
   noAI?: boolean;
+  walk?: string[]; // short step-by-step walkthrough, used for guided help after 3 wrong answers in a row
 }
 
 export interface Attempt { kind: Kind; format: Format; level: number; correct: boolean; tag: Tag; hintUsed: boolean; unsure: boolean }
@@ -36,9 +37,10 @@ export interface TutorState {
   unrecognised: number;
   target: Target;
   hits: { M1: number; M2: number };
+  wrongRun?: number; // consecutive wrong answers in practice
   history: Attempt[];
 }
-export type Action = "harder" | "alt_explain" | "prereq" | "continue";
+export type Action = "harder" | "alt_explain" | "prereq" | "guided" | "continue";
 export interface Decision { action: Action; reason: string; state: TutorState }
 
 export const newState = (level = 1): TutorState => ({ level, streak: 0, unrecognised: 0, target: null, hits: { M1: 0, M2: 0 }, history: [] });
@@ -81,6 +83,7 @@ function genPctOf(r: () => number): Question {
       hint: `Start small: 10% of ${y} is ${y / 10}, and 1% is ${y / 100}. Now build up to ${x}%.`,
       helperBase: y,
       model: `${x}% of ₹${y} = ${x}/100 × ${y} = ₹${a}.`,
+      walk: [`Find 10% of ₹${y}: ${y} ÷ 10 = ${y / 10}.`, `Find 1% of ₹${y}: ${y} ÷ 100 = ${y / 100}.`, `Build ${x}% from those pieces.`, `So ${x}% of ₹${y} = ₹${a}.`],
       wrongValues: [],
     };
   }
@@ -102,6 +105,7 @@ function genDiscountSP(r: () => number): Question {
       hint: `Percent of what? The discount is a percent of the marked price. 10% of ${mp} is ${mp / 10}.`,
       helperBase: mp,
       model: `Discount = ${d}% of ${mp} = ₹${disc}. You pay ${mp} − ${disc} = ₹${sp}.`,
+      walk: [`The discount is a percent of the marked price, ₹${mp}.`, `Discount = ${d}% of ${mp} = ₹${disc}.`, `You pay the marked price minus the discount: ${mp} − ${disc}.`, `So you pay ₹${sp}.`],
       wrongValues: [{ value: disc, tag: "slip", note: `That ₹${disc} is the discount, the money you save. The question asks what you pay.` }],
     };
   }
@@ -139,6 +143,7 @@ function genProfitMCQ(r: () => number): Question {
     hint: `First find the profit in rupees (SP − CP). Then ask: profit is a percent of which price, the one paid or the one sold at?`,
     helperBase: cp,
     model: `Profit = ${sp} − ${cp} = ₹${profit}. Profit % = profit ÷ CP × 100 = ${profit}/${cp} × 100 = ${p}%.`,
+    walk: [`Profit = SP − CP = ${sp} − ${cp} = ₹${profit}.`, `Profit is a percent of which price? The cost price ₹${cp}, the money that was paid.`, `Profit % = ${profit} ÷ ${cp} × 100.`, `So the profit is ${p}%.`],
   };
 }
 
@@ -159,6 +164,7 @@ function genLossNumeric(r: () => number): Question {
       hint: `Loss = CP − SP. Loss percent is a percent of the price ${name} originally paid.`,
       helperBase: cp,
       model: `Loss = ${cp} − ${sp} = ₹${loss}. Loss % = loss ÷ CP × 100 = ${loss}/${cp} × 100 = ${l}%.`,
+      walk: [`Loss = CP − SP = ${cp} − ${sp} = ₹${loss}.`, `Loss is a percent of the cost price, ₹${cp}.`, `Loss % = ${loss} ÷ ${cp} × 100.`, `So the loss is ${l}%.`],
       wrongValues: [
         { value: wrongM1, tag: "M1", note: "" },
         { value: loss, tag: "slip", note: `₹${loss} is the loss in rupees. The question asks for percent.` },
@@ -191,6 +197,7 @@ function genSuccessive(r: () => number, format: "mcq" | "numeric"): Question {
     hint: `After the first discount the price is no longer ₹${mp}. The second ${d2}% is a percent of which price?`,
     helperBase: a,
     model: `After ${d1}% off: ₹${a}. The second ${d2}% is taken off ₹${a} (not ₹${mp}): ${d2}% of ${a} = ₹${b}. Final = ${a} − ${b} = ₹${fin}.`,
+    walk: [`After the first ${d1}% off: ₹${mp} becomes ₹${a}.`, `The second ${d2}% is taken from ₹${a}, not from ₹${mp}.`, `${d2}% of ${a} = ₹${b}.`, `Final price = ${a} − ${b} = ₹${fin}.`],
   };
   if (format === "numeric") {
     return { ...base, answer: fin, wrongValues: [
@@ -225,6 +232,7 @@ function genSpot(r: () => number, which: "M1" | "M2"): Question {
       ],
       hint: `Check each line: is the percent taken out of the right price?`,
       model: `Step 2 is wrong. It should be Profit ÷ CP × 100 = ${profit} ÷ ${cp} × 100 = ${r1((profit / cp) * 100)}%.`,
+      walk: [`Read each step slowly and ask: is the percent out of the right price?`, `Step 1 finds the profit, ₹${profit}. That part is fine.`, `Step 2 divides by the selling price. Profit % must be out of the cost price, ₹${cp}.`, `So step 2 is the wrong one.`],
       answer: 1,
     };
   }
@@ -243,6 +251,7 @@ function genSpot(r: () => number, which: "M1" | "M2"): Question {
     ],
     hint: `Check each line: the second discount is a percent of which price?`,
     model: `Step 2 is wrong. After the first discount the price is ₹${a}. ${d2}% of ${a} = ₹${(a * d2) / 100}. Final = ₹${a - (a * d2) / 100}.`,
+    walk: [`Read each step slowly and ask: which price is the second discount taken from?`, `Step 1 finds the first discount. That part is fine.`, `Step 2 takes the second discount from ₹${mp}. It should be taken from the new price, ₹${a}.`, `So step 2 is the wrong one.`],
     answer: 1,
   };
 }
@@ -315,7 +324,7 @@ export function grade(q: Question, input: string | number): Graded {
 }
 
 // ---------- adaptive decision rule ----------
-export function decide(s0: TutorState, a: Attempt): Decision {
+function decideCore(s0: TutorState, a: Attempt): Decision {
   const s: TutorState = { ...s0, hits: { ...s0.hits }, history: [...s0.history, a] };
   if (a.correct) {
     if (a.hintUsed) {
@@ -348,6 +357,22 @@ export function decide(s0: TutorState, a: Attempt): Decision {
     return { action: "prereq", reason: a.unsure ? "You said you were not sure and it did not work out, so let us rebuild the basics first." : "Two answers in a row we could not link to one idea, so let us rebuild the basics first.", state: s };
   }
   return { action: "continue", reason: "Not yet. Let us try another one like it.", state: s };
+}
+
+// Three wrong answers in a row (of any kind) -> guided, step-by-step help on the question just missed.
+// Any correct answer resets the count. The wrong-answer count is only used by the tutor and is never shown to the learner.
+export const WRONG_RUN_LIMIT = 3;
+export function decide(s0: TutorState, a: Attempt): Decision {
+  const d = decideCore(s0, a);
+  const run = a.correct ? 0 : (s0.wrongRun ?? 0) + 1;
+  const s: TutorState = { ...d.state, wrongRun: run };
+  if (run >= WRONG_RUN_LIMIT) {
+    s.wrongRun = 0;
+    s.streak = 0;
+    if (d.action !== "prereq") s.level = Math.max(0, s.level - 1);
+    return { action: "guided", reason: "Three answers in a row did not work out. That is okay. Let us solve one together, step by step.", state: s };
+  }
+  return { ...d, state: s };
 }
 
 // ---------- explanation check (deterministic first) ----------
