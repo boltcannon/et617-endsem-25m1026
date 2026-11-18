@@ -21,7 +21,7 @@ function earnedBadges(h: Attempt[]): { key: string; name: string; why: string }[
   return out;
 }
 
-type Screen = "home" | "q" | "fb" | "concept" | "remedy" | "prereq" | "explain" | "efb" | "summary" | "about";
+type Screen = "home" | "q" | "fb" | "concept" | "remedy" | "prereq" | "guided" | "explain" | "efb" | "summary" | "about";
 type QV = Question & { src?: "ai" | "template" };
 interface FB { correct: boolean; tag: Tag; note: string; action: string; reason: string; given: string }
 interface Saved {
@@ -139,6 +139,7 @@ export default function Page() {
   const [about, setAbout] = useState(false);
   const [shopCount, setShopCount] = useState(0);
   const [toast, setToast] = useState("");
+  const [walkShown, setWalkShown] = useState(1);
   const sRef = useRef<Saved | null>(null);
   sRef.current = s;
 
@@ -262,7 +263,7 @@ export default function Page() {
   }
 
   async function goNext(cur: Saved) {
-    const remedial = cur.fb?.action === "alt_explain" || cur.fb?.action === "prereq";
+    const remedial = cur.fb?.action === "alt_explain" || cur.fb?.action === "prereq" || cur.fb?.action === "guided";
     // after a remedy on the last slot, give one more question so the fix is checked
     if (cur.qn + 1 >= PRACTICE_COUNT && !(remedial && cur.qn + 1 === PRACTICE_COUNT)) { resetUI(); setS({ ...cur, screen: "explain", step: 4, remedy: null }); return; }
     const q = nextQuestion(cur.tutor, rng(cur.seed + cur.qn * 7 + 13));
@@ -283,6 +284,7 @@ export default function Page() {
       setS({ ...s, tutor, screen: "concept", step: 2, log: [...s.log, `warm-up ${c}/2 → start at level ${c}${tutor.target ? " (watching " + tutor.target + ")" : ""}`] });
       return;
     }
+    if (s.fb.action === "guided") { setWalkShown(1); setS({ ...s, screen: "guided" }); return; }
     if (s.fb.action === "alt_explain") { setS({ ...s, screen: "remedy", remedy: s.tutor.target }); return; }
     if (s.fb.action === "prereq") { setS({ ...s, screen: "prereq" }); return; }
     await goNext(s);
@@ -429,7 +431,7 @@ export default function Page() {
             {!fb!.correct && (fb!.tag === "M1" || fb!.tag === "M2") && <p>{MIS_TEXT[fb!.tag]}</p>}
           </div>
           <button className="btn" onClick={afterFeedback} disabled={busy}>
-            {busy ? "Getting your next question…" : fb!.action === "alt_explain" ? "Show me another way" : fb!.action === "prereq" ? "Let's rebuild the basics" : fb!.action === "harder" ? "Level up: next question" : "Continue"}
+            {busy ? "Getting your next question…" : fb!.action === "alt_explain" ? "Show me another way" : fb!.action === "guided" ? "Let's solve one together" : fb!.action === "prereq" ? "Let's rebuild the basics" : fb!.action === "harder" ? "Level up: next question" : "Continue"}
           </button>
         </div>
       );
@@ -503,6 +505,32 @@ export default function Page() {
       </>
     );
     dock = <button className="btn" onClick={() => goNext(s)} disabled={busy}>{busy ? "Getting your question…" : "Try a small one"}</button>;
+  }
+
+  // ---------- GUIDED HELP (after 3 wrong answers in a row) ----------
+  else if (s.screen === "guided" && s.q) {
+    const q = s.q;
+    const steps = q.walk && q.walk.length ? q.walk : [q.model];
+    const shown = Math.min(walkShown, steps.length);
+    body = (
+      <>
+        <Coach mood="kind">That was a tough few. That is okay. Let us do one together.</Coach>
+        <h2>Let us solve it together, step by step</h2>
+        <div className="card">
+          <p style={{ marginTop: 0 }}>{q.stem}</p>
+          <div className="ask">{q.ask}</div>
+        </div>
+        <ol className="walk">
+          {steps.slice(0, shown).map((t, i) => (
+            <li key={i} className="wstep"><span className="letter">{i + 1}</span><span>{t}</span></li>
+          ))}
+        </ol>
+        {shown >= steps.length && <div className="box">One small step at a time works. Next is an easier question like this one.</div>}
+      </>
+    );
+    dock = shown < steps.length
+      ? <button className="btn" onClick={() => setWalkShown(shown + 1)}>Show next step</button>
+      : <button className="btn" onClick={() => goNext(s)} disabled={busy}>{busy ? "Getting your question…" : "Try a small one"}</button>;
   }
 
   // ---------- EXPLAIN ----------

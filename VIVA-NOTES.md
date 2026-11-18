@@ -6,6 +6,7 @@ After every practice answer, `decide(state, attempt)` returns one of four action
 2. **Alternative explanation** — wrong and the answer is tagged `M1` (profit ÷ selling price) or `M2` (discounts added) → `target` set, `hits[tag]++`, level unchanged; app shows the remedy screen, then a same-idea question.
 3. **Prerequisite** — wrong with no tag and `unrecognised >= 2`, **or** wrong and the learner tapped "Not sure" → `level - 1` (minimum 0), app shows "Quick rebuild: x% of a number".
 4. **Continue** — correct but a hint was used (streak reset to 0, no level change), or a first untagged wrong answer.
+5. **Guided help (viva branch)** — three wrong answers in a row (`wrongRun >= WRONG_RUN_LIMIT`, any kind of wrong; a correct answer resets it) → action `guided`: level − 1 (unless the basics rebuild already lowered it), then a screen that reveals the missed question's `walk` steps one by one, then an easier question. Wrapper `decide()` in `lib/engine.ts` sits on top of `decideCore()`; screen is `screen === "guided"` in `app/page.tsx`.
 Start level comes from the 2-question warm-up: `newState(c)` where `c` = number correct (0, 1 or 2) (`app/page.tsx` ~166). Correct answers always come from code, never the AI.
 
 ## 2. Likely live changes: where to edit
