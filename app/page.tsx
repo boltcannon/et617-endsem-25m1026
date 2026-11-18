@@ -67,8 +67,8 @@ function Paisa({ mood = "happy", size = 56 }: { mood?: Mood; size?: number }) {
         <>
           <circle cx="34" cy="48" r="5" fill="#3b2300" /><circle cx="58" cy="48" r="5" fill="#3b2300" />
           <circle cx="35.5" cy="46" r="1.8" fill="#fff" /><circle cx="59.5" cy="46" r="1.8" fill="#fff" />
-          <path d="M54 38l11-4" stroke="#5a3200" strokeWidth="3" strokeLinecap="round" />
-          <path d="M38 64q6-3 14 0" stroke="#5a3200" strokeWidth="3" fill="none" strokeLinecap="round" />
+          <path d="M52 37q7-5 13-1" stroke="#5a3200" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+          <path d="M38 63q8 5 16 0" stroke="#5a3200" strokeWidth="3" fill="none" strokeLinecap="round" />
         </>
       ) : mood === "kind" ? (
         <>
@@ -106,7 +106,7 @@ function PriceTag() {
         <circle cx="214" cy="75" r="8" fill="#fdf3e1" stroke="#c2410c" strokeWidth="2.5" />
         <text x="26" y="50" fontSize="22" fontWeight="800" fill="#fff" letterSpacing="4" fontFamily="system-ui, sans-serif">SALE</text>
         <text x="24" y="112" fontSize="58" fontWeight="900" fill="#fff" fontFamily="system-ui, sans-serif">20%</text>
-        <text x="146" y="112" fontSize="30" fontWeight="800" fill="#fff7ed" fontFamily="system-ui, sans-serif">off</text>
+        <text x="160" y="112" fontSize="30" fontWeight="800" fill="#fff7ed" fontFamily="system-ui, sans-serif">off</text>
       </svg>
       <div className="hero-coin"><Paisa mood="cheer" size={74} /></div>
     </div>
