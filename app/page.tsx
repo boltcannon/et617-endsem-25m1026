@@ -93,7 +93,7 @@ export default function Page() {
     if (q.noAI) return { ...q, src: "template" };
     try {
       const c = new AbortController();
-      const t = setTimeout(() => c.abort(), 4000);
+      const t = setTimeout(() => c.abort(), 6500);
       const res = await fetch("/api/ai", {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: c.signal,
         body: JSON.stringify({ task: "story", facts: q.facts, stem: q.stem }),
@@ -185,7 +185,7 @@ export default function Page() {
     let ai: string | undefined;
     try {
       const c = new AbortController();
-      const t = setTimeout(() => c.abort(), 4500);
+      const t = setTimeout(() => c.abort(), 7000);
       const res = await fetch("/api/ai", {
         method: "POST", headers: { "Content-Type": "application/json" }, signal: c.signal,
         body: JSON.stringify({ task: "feedback", label, learnerText: text, canned, allowed: [20, 10, 30, 1000, 800, 80, 720, 700, 100] }),

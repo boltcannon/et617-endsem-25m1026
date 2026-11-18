@@ -10,31 +10,46 @@ export const runtime = "nodejs";
 
 const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
+let lastErr = "";
+const MODELS = [process.env.GROQ_MODEL, "openai/gpt-oss-20b", "openai/gpt-oss-120b", "llama-3.1-8b-instant", "llama-3.3-70b-versatile"].filter(Boolean) as string[];
+
 async function llm(system: string, user: string): Promise<string | null> {
   const key = process.env.GROQ_API_KEY;
-  if (!key) return null;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 3500);
-  try {
-    const res = await fetch(ENDPOINT, {
-      method: "POST",
-      signal: ctrl.signal,
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
-        temperature: 0.6,
-        max_tokens: 160,
-        messages: [{ role: "system", content: system }, { role: "user", content: user }],
-      }),
-    });
-    if (!res.ok) return null;
-    const j = await res.json();
-    return (j.choices?.[0]?.message?.content ?? "").trim() || null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
+  lastErr = "";
+  if (!key) { lastErr = "no_key"; return null; }
+  for (const model of MODELS) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 6000);
+    try {
+      const res = await fetch(ENDPOINT, {
+        method: "POST",
+        signal: ctrl.signal,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model,
+          temperature: 0.6,
+          max_tokens: model.startsWith("openai/gpt-oss") ? 900 : 160,
+          ...(model.startsWith("openai/gpt-oss") ? { reasoning_effort: "low" } : {}),
+          messages: [{ role: "system", content: system }, { role: "user", content: user }],
+        }),
+      });
+      if (!res.ok) {
+        lastErr += ` | ${model} http_${res.status}: ${(await res.text()).slice(0, 70)}`;
+        if (res.status === 404 || res.status === 403 || res.status === 400) continue; // try next model
+        return null;
+      }
+      const j = await res.json();
+      const out = (j.choices?.[0]?.message?.content ?? "").trim();
+      if (out) return out;
+      lastErr += ` | ${model} empty`;
+    } catch (e) {
+      lastErr = `${model} fetch_error: ${String(e).slice(0, 80)}`;
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
   }
+  return null;
 }
 
 export async function POST(req: Request) {
@@ -48,7 +63,7 @@ export async function POST(req: Request) {
         "Use rupees. Plain simple English, friendly. Use EXACTLY the given numbers and no other numbers. Do not ask a question. Do not give any answer or working.",
       `Reword this setup with a fresh everyday shop context but keep every number the same.\nNumbers that must appear: ${facts.join(", ")}\nSetup: ${body.stem ?? ""}`
     );
-    if (!out) return NextResponse.json({ ok: false, reason: "ai_unavailable" });
+    if (!out) return NextResponse.json({ ok: false, reason: "ai_unavailable", detail: lastErr });
     if (!validateStory(out, facts)) return NextResponse.json({ ok: false, reason: "failed_validation" });
     return NextResponse.json({ ok: true, text: out });
   }
@@ -60,7 +75,7 @@ export async function POST(req: Request) {
         "Do NOT change the maths or the verdict. Never say 'wrong'. Praise effort first. Use only numbers from the given text.",
       `Verdict (already decided by the app): ${body.label}\nStudent wrote: "${(body.learnerText ?? "").slice(0, 300)}"\nApp's feedback: "${body.canned ?? ""}"\nRewrite the app's feedback warmly in 2 sentences, referring to what the student wrote.`
     );
-    if (!out) return NextResponse.json({ ok: false, reason: "ai_unavailable" });
+    if (!out) return NextResponse.json({ ok: false, reason: "ai_unavailable", detail: lastErr });
     if (!validateFeedback(out, allowed)) return NextResponse.json({ ok: false, reason: "failed_validation" });
     return NextResponse.json({ ok: true, text: out });
   }
